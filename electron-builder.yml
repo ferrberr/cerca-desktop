@@ -1,0 +1,64 @@
+appId: com.ferrberr.cerca
+productName: Cerca
+asar: true
+npmRebuild: false
+executableName: cerca
+directories:
+  output: dist
+  buildResources: build
+files:
+  - package.json
+  - index.html
+  - app.js
+  - map.js
+  - style.css
+  - ai/**
+  - shared/**
+  - providers/**
+  - desktop/**
+  - '!desktop/smoke-tests.js'
+  - assets/**
+  - catalog/demo.json
+  - catalog/import-example.json
+  - node_modules/leaflet/**
+  - node_modules/leaflet.markercluster/**
+  - '!**/.test-data/**'
+  - '!**/test-results/**'
+  - '!**/.env*'
+  - '!**/*.log'
+extraFiles:
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  syncDesktopName: true
+  category: Utility
+  icon: build/icon.png
+  artifactName: Cerca-${version}-linux-x64.${ext}
+  maintainer: ferrberr <246358479+ferrberr@users.noreply.github.com>
+  desktop:
+    entry:
+      StartupWMClass: Cerca
+      Comment: Busca productos con inteligencia artificial local, alertas y mapa
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: Cerca-${version}-windows-${arch}-setup.${ext}
+  signAndEditExecutable: true
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Cerca
+  uninstallDisplayName: Cerca
+  deleteAppDataOnUninstall: false
+publish: null

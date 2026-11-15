@@ -1,0 +1,31 @@
+{
+  "models": [
+    {
+      "role": "planner",
+      "name": "cerca-planner:9b",
+      "digest": "56671c2ab9385f9cfcb404638e32cd62d88e3501d44822208363c010179a3c90",
+      "size": 6550825550,
+      "quantization": "Q4_K_M",
+      "source": "https://ollama.com/library/qwen3.5:9b",
+      "license": "Apache-2.0"
+    },
+    {
+      "role": "decision",
+      "name": "nimble:9b-q4_K_M",
+      "digest": "d99f22c363cea449151cc473887de081b98ca98e8a29b1a8710e09da916f2c79",
+      "size": 5629111625,
+      "quantization": "Q4_K_M",
+      "source": "https://ollama.com/library/nimble:9b-q4_K_M",
+      "license": "Apache-2.0"
+    },
+    {
+      "role": "embedding",
+      "name": "qwen3-embedding:0.6b",
+      "digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+      "size": 639150858,
+      "quantization": "Q8_0",
+      "source": "https://ollama.com/library/qwen3-embedding:0.6b",
+      "license": "Apache-2.0"
+    }
+  ]
+}

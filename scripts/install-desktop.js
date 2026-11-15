@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const destination = path.join(os.homedir(), '.local/share/applications/cerca.desktop');
+const escape = s => '"' + s.replace(/[\\"`$]/g, '\\$&') + '"';
+const contents = `[Desktop Entry]\nVersion=1.0\nType=Application\nName=Cerca\nComment=Busca y selecciona productos con inteligencia artificial local\nExec=${escape(process.execPath)} ${escape(path.join(root, 'scripts/start-desktop.js'))}\nPath=${root}\nIcon=${path.join(root, 'assets/icon.png')}\nTerminal=false\nCategories=Utility;\nStartupWMClass=Cerca\n`;
+await fs.mkdir(path.dirname(destination), {recursive:true});
+await fs.writeFile(destination, contents, {mode:0o644});
+console.log(`Aplicación instalada en ${destination}`);

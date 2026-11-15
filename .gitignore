@@ -1,0 +1,17 @@
+node_modules/
+.test-data/
+test-results/
+*.log
+dist/
+build/icon.png
+build/icon.ico
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.AppImage
+*.deb
+*-setup.exe
+.DS_Store

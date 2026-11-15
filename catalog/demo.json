@@ -1,0 +1,170 @@
+[
+  {
+    "id": 1,
+    "title": "MacBook Air 13″ M2",
+    "spec": "8 GB RAM · 256 GB SSD · Plata",
+    "price": 650,
+    "previous": 799,
+    "condition": "Como nuevo",
+    "city": "Barcelona",
+    "district": "Gràcia",
+    "distance": 2.4,
+    "source": "Wallapop",
+    "badge": "Mejor precio",
+    "asset": "laptop-1",
+    "pos": [
+      43,
+      35
+    ],
+    "keywords": "apple portátil macbook air m2 13 plata silver",
+    "demo": true,
+    "description": "MacBook Air 13″ M2. 8 GB RAM · 256 GB SSD · Plata. Equipo completo en como nuevo."
+  },
+  {
+    "id": 2,
+    "title": "MacBook Air M2 · 256 GB",
+    "spec": "8 GB RAM · 256 GB SSD · Blanco estrella",
+    "price": 720,
+    "previous": 849,
+    "condition": "Como nuevo",
+    "city": "Barcelona",
+    "district": "Eixample",
+    "distance": 4.1,
+    "source": "Wallapop",
+    "badge": "Bajada de precio",
+    "asset": "laptop-2",
+    "pos": [
+      57,
+      45
+    ],
+    "keywords": "apple portátil macbook air m2 blanco estrella starlight",
+    "demo": true,
+    "description": "MacBook Air M2 · 256 GB. 8 GB RAM · 256 GB SSD · Blanco estrella. Equipo completo en como nuevo."
+  },
+  {
+    "id": 3,
+    "title": "MacBook Air M2 medianoche",
+    "spec": "8 GB RAM · 256 GB SSD · Medianoche",
+    "price": 740,
+    "previous": 899,
+    "condition": "Buen estado",
+    "city": "Badalona",
+    "district": "Centro",
+    "distance": 10,
+    "source": "eBay",
+    "badge": "Envío disponible",
+    "asset": "laptop-3",
+    "pos": [
+      83,
+      23
+    ],
+    "keywords": "apple portátil macbook air m2 medianoche midnight",
+    "demo": true,
+    "description": "MacBook Air M2 medianoche. 8 GB RAM · 256 GB SSD · Medianoche. Equipo completo en buen estado."
+  },
+  {
+    "id": 4,
+    "title": "MacBook Air M2 · 512 GB",
+    "spec": "8 GB RAM · 512 GB SSD · Plata",
+    "price": 790,
+    "previous": 949,
+    "condition": "Como nuevo",
+    "city": "Barcelona",
+    "district": "Les Corts",
+    "distance": 5.8,
+    "source": "Wallapop",
+    "badge": "Publicado hoy",
+    "asset": "laptop-4",
+    "pos": [
+      22,
+      40
+    ],
+    "keywords": "apple portátil macbook air m2 plata silver",
+    "demo": true,
+    "description": "MacBook Air M2 · 512 GB. 8 GB RAM · 512 GB SSD · Plata. Equipo completo en como nuevo."
+  },
+  {
+    "id": 5,
+    "title": "MacBook Air 13″ M2 · 16 GB",
+    "spec": "16 GB RAM · 256 GB SSD · Gris espacial",
+    "price": 850,
+    "previous": 1049,
+    "condition": "Buen estado",
+    "city": "Sant Cugat",
+    "district": "Centro",
+    "distance": 16,
+    "source": "Wallapop",
+    "badge": "Envío disponible",
+    "asset": "laptop-5",
+    "pos": [
+      28,
+      14
+    ],
+    "keywords": "apple portátil macbook air m2 gris espacial",
+    "demo": true,
+    "description": "MacBook Air 13″ M2 · 16 GB. 16 GB RAM · 256 GB SSD · Gris espacial. Equipo completo en buen estado."
+  },
+  {
+    "id": 6,
+    "title": "MacBook Air M2 con garantía",
+    "spec": "8 GB RAM · 256 GB SSD · Plata",
+    "price": 810,
+    "previous": 999,
+    "condition": "Como nuevo",
+    "city": "Barcelona",
+    "district": "Sant Martí",
+    "distance": 6.2,
+    "source": "eBay",
+    "badge": "Con garantía",
+    "asset": "laptop-6",
+    "pos": [
+      70,
+      49
+    ],
+    "keywords": "apple portátil macbook air m2 garantía plata silver",
+    "demo": true,
+    "description": "MacBook Air M2 con garantía. 8 GB RAM · 256 GB SSD · Plata. Equipo completo en como nuevo."
+  },
+  {
+    "id": 7,
+    "title": "Sony WH-1000XM5",
+    "spec": "Cancelación de ruido · Negro · Con estuche",
+    "price": 185,
+    "previous": 299,
+    "condition": "Como nuevo",
+    "city": "Barcelona",
+    "district": "Eixample",
+    "distance": 3.1,
+    "source": "Wallapop",
+    "badge": "Mejor precio",
+    "asset": "headphones",
+    "pos": [
+      44,
+      40
+    ],
+    "keywords": "sony wh1000xm5 wh-1000xm5 auriculares cascos inalámbricos bluetooth",
+    "demo": true,
+    "description": "Sony WH-1000XM5. Cancelación de ruido · Negro · Con estuche. Equipo completo en como nuevo."
+  },
+  {
+    "id": 8,
+    "title": "iPhone 15 · 128 GB",
+    "spec": "128 GB · Negro · Batería al 96 %",
+    "price": 480,
+    "previous": 639,
+    "condition": "Buen estado",
+    "city": "Barcelona",
+    "district": "Gràcia",
+    "distance": 2.8,
+    "source": "Wallapop",
+    "badge": "Mejor precio",
+    "asset": "phone",
+    "pos": [
+      40,
+      30
+    ],
+    "keywords": "apple iphone 15 móvil teléfono negro",
+    "demo": true,
+    "description": "iPhone 15 · 128 GB. 128 GB · Negro · Batería al 96 %. Equipo completo en buen estado."
+  }
+]

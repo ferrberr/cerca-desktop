@@ -1,0 +1,51 @@
+{
+  "name": "cerca-desktop",
+  "productName": "Cerca",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.js",
+  "description": "Aplicación de escritorio con búsqueda y selección de productos mediante modelos locales",
+  "scripts": {
+    "start": "node scripts/start-desktop.js",
+    "dev": "node scripts/start-desktop.js",
+    "desktop:install": "node scripts/install-desktop.js",
+    "models:install": "node scripts/install-models.js",
+    "models:status": "node scripts/model-status.js",
+    "test": "node scripts/run-tests.js",
+    "test:models": "node scripts/test-models.js",
+    "test:desktop": "node scripts/start-desktop.js --smoke-test",
+    "check": "node scripts/check.js",
+    "test:live": "node scripts/test-live.js",
+    "test:map": "node scripts/start-desktop.js --map-smoke-test",
+    "test:strict": "node scripts/test-strict-matching.js",
+    "icons": "node scripts/build-icons.js",
+    "dist:linux": "npm run icons && electron-builder --linux --x64 --publish never",
+    "dist:win": "npm run icons && electron-builder --win --x64 --publish never",
+    "pack:linux": "npm run icons && electron-builder --linux --x64 --dir --publish never",
+    "pack:win": "npm run icons && electron-builder --win --x64 --dir --publish never",
+    "test:package": "node scripts/test-package.js"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "leaflet.markercluster": "1.5.3"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0"
+  },
+  "author": {
+    "name": "ferrberr"
+  },
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/ferrberr/cerca-desktop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ferrberr/cerca-desktop.git"
+  },
+  "desktopName": "cerca.desktop"
+}

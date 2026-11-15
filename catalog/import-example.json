@@ -1,0 +1,16 @@
+{
+  "products": [
+    {
+      "title": "Sustituye este título por el del anuncio real",
+      "price": 650,
+      "description": "Copia la descripción real del anuncio: modelo, estado, accesorios incluidos y posibles averías.",
+      "spec": "Especificaciones del anuncio",
+      "condition": "Como nuevo",
+      "city": "Barcelona",
+      "distance": 3.5,
+      "source": "Tu catálogo",
+      "latitude": 41.3851,
+      "longitude": 2.1734
+    }
+  ]
+}
