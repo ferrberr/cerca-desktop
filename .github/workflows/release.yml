@@ -38,7 +38,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Test packaged Linux application
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:package
+        run: dbus-run-session -- xvfb-run -a npm run test:package
       - name: Test packaged Windows application
         if: runner.os == 'Windows'
         run: npm run test:package

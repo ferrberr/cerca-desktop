@@ -21,6 +21,8 @@ app.setName('Cerca');
 if(process.platform==='linux')app.setDesktopName('cerca.desktop');
 if(process.platform==='win32')app.setAppUserModelId('com.ferrberr.cerca');
 const packageSmoke=process.argv.includes('--package-smoke-test');
+// CI runners have no physical GPU; exercise the regular software renderer in that test only.
+if(packageSmoke&&process.env.CI==='true'&&process.platform==='linux')app.disableHardwareAcceleration();
 const mapSmoke=!app.isPackaged&&process.argv.includes('--map-smoke-test');
 const smoke=packageSmoke||!app.isPackaged&&process.argv.includes('--smoke-test')||mapSmoke;
 if(smoke)app.setPath('userData',packageSmoke?path.join(app.getPath('temp'),'cerca-package-'+process.pid+'-'+Date.now()):path.join(root,'.test-data',String(Date.now())));

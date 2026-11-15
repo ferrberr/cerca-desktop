@@ -3,6 +3,7 @@ import path from 'node:path';
 export async function runPackageSmoke(window,root,app){
  let report;
  try{
+  if(process.env.CI==='true')window.showInactive();
   const ui=await window.webContents.executeJavaScript(`(async()=>{
    await window.cercaReady;
    const bootstrap=await window.cercaDesktop.bootstrap();
@@ -25,6 +26,7 @@ export async function runPackageSmoke(window,root,app){
   await fs.access(path.join(root,'desktop/preload.cjs'));
   await fs.access(path.join(root,'catalog/demo.json'));
   report={ok:true,packaged:app.isPackaged,platform:process.platform,arch:process.arch,electron:process.versions.electron,version:app.getVersion(),profile:app.getPath('userData'),ui};
+  await window.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
   if(process.env.CERCA_PACKAGE_SCREENSHOT)await fs.writeFile(process.env.CERCA_PACKAGE_SCREENSHOT,(await window.webContents.capturePage()).toPNG());
  }catch(error){report={ok:false,error:error.message};}
  if(process.env.CERCA_PACKAGE_SMOKE_REPORT)await fs.writeFile(process.env.CERCA_PACKAGE_SMOKE_REPORT,JSON.stringify(report,null,2));

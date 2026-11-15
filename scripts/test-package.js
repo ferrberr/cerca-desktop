@@ -19,5 +19,5 @@ try{
  if(result!==0||!report.ok||!report.packaged)throw new Error(`El paquete no supera la comprobación: ${JSON.stringify(report)}`);
  await fs.writeFile(`dist/package-smoke-${process.platform}.json`,JSON.stringify(report,null,2));
  console.log(`CERCA_PACKAGE_OK ${report.platform} ${report.arch} ${report.version} · Electron ${report.electron}`);
- if(report.profile&&path.dirname(report.profile)===os.tmpdir()&&path.basename(report.profile).startsWith('cerca-package-'))await fs.rm(report.profile,{recursive:true,force:true});
-}finally{await fs.rm(temporary,{recursive:true,force:true});}
+ if(report.profile&&path.dirname(report.profile)===os.tmpdir()&&path.basename(report.profile).startsWith('cerca-package-'))await fs.rm(report.profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});
+}finally{await fs.rm(temporary,{recursive:true,force:true,maxRetries:10,retryDelay:200});}
