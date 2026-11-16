@@ -1,7 +1,7 @@
 {
   "name": "cerca-desktop",
   "productName": "Cerca",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "main": "desktop/main.js",
@@ -19,6 +19,7 @@
     "test:live": "node scripts/test-live.js",
     "test:map": "node scripts/start-desktop.js --map-smoke-test",
     "test:strict": "node scripts/test-strict-matching.js",
+    "benchmark:precision": "node scripts/test-precision.js",
     "icons": "node scripts/build-icons.js",
     "dist:linux": "npm run icons && electron-builder --linux --x64 --publish never",
     "dist:win": "npm run icons && electron-builder --win --x64 --publish never",

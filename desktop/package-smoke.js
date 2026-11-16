@@ -12,6 +12,8 @@ export async function runPackageSmoke(window,root,app){
    if(!window.L?.map||!window.L?.markerClusterGroup)throw new Error('Faltan las librerías locales del mapa');
    if(document.styleSheets.length<3)throw new Error('No se han cargado los estilos incluidos');
    document.querySelector('#settings-button').click();
+   const target=document.querySelector('#match-target');
+   if(target?.value!=='100'||Array.from(target.options,option=>option.value).join(',')!=='100,150,200')throw new Error('Faltan los objetivos de 100, 150 y 200 coincidencias');
    if(!document.querySelector('#configure-models'))throw new Error('Falta la configuración multiplataforma de IA');
    document.querySelector('#configure-models').click();
    if(!document.querySelector('#install-local-models')||!document.querySelector('#get-ollama'))throw new Error('Falta el asistente de modelos');
@@ -21,7 +23,7 @@ export async function runPackageSmoke(window,root,app){
    document.querySelector('#price-form input[name="max"]').value='500';
    document.querySelector('#price-form').requestSubmit();
    if(!document.querySelector('#price-label').textContent.includes('200'))throw new Error('No funciona el filtro de precio mínimo');
-   return {isolated:true,mapLibraries:true,styles:true,modelSetup:true,minimumPrice:true,title:document.title,url:location.href,appInfo:bootstrap.value.appInfo};
+   return {isolated:true,mapLibraries:true,styles:true,modelSetup:true,minimumPrice:true,matchTargets:true,title:document.title,url:location.href,appInfo:bootstrap.value.appInfo};
   })()`);
   await fs.access(path.join(root,'desktop/preload.cjs'));
   await fs.access(path.join(root,'catalog/demo.json'));

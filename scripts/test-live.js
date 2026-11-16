@@ -9,7 +9,6 @@ const maxCandidates=process.env.CERCA_LIVE_MAX_CANDIDATES===undefined?Infinity:N
 if(maxCandidates!==Infinity&&(!Number.isSafeInteger(maxCandidates)||maxCandidates<1||maxCandidates>1000))throw new Error('CERCA_LIVE_MAX_CANDIDATES debe estar entre 1 y 1000.');
 fs.mkdirSync('test-results',{recursive:true});
 const store=new Store(path.join(root,'.test-data','live-provider-test'));
-store.data.preferences['cerca-pages']=1;
 const provider=new WallapopProvider();
 const service=new SearchService({engine:new SearchEngine(),provider,store});
 const result=await service.search('MacBook Air M2 completo y funcionando, sin fundas ni piezas, hasta 900 euros',{maxPrice:900,radius:50,zone:'Barcelona',center:{latitude:41.3851,longitude:2.1734,label:'Barcelona'},condition:'Cualquiera',source:'Todos'},'live',{maxCandidates,onProgress:console.log});

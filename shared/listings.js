@@ -1,7 +1,7 @@
 import {withinArea} from './geo.js';
 
 const ANALYSIS_INPUTS = ['title', 'spec', 'description', 'price', 'condition', 'available', 'reserved'];
-const ANALYSIS_FIELDS = ['accepted', 'match', 'reason', 'analysisQuery', 'decisionModel', 'decisionSource', 'decisionCategory', 'decisionConfidence'];
+const ANALYSIS_FIELDS = ['accepted', 'match', 'reason', 'analysisQuery', 'decisionModel', 'decisionSource', 'decisionCategory', 'decisionConfidence', 'decisionChecks'];
 
 // The city label is descriptive. Geographic limits are measured from the selected centre.
 export function matchesFilters(item, filters = {}) {

@@ -2,23 +2,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {priceRange} from '../shared/prices.js';
 import {validCoordinates} from '../shared/geo.js';
+import {DEFAULT_MATCH_TARGET, MATCH_TARGETS} from '../shared/limits.js';
 
-export const KEYS = new Set(['cerca-theme', 'cerca-favorites', 'cerca-recent', 'cerca-alerts', 'cerca-dataset', 'cerca-center', 'cerca-pages']);
+export const KEYS = new Set(['cerca-theme', 'cerca-favorites', 'cerca-recent', 'cerca-alerts', 'cerca-dataset', 'cerca-center', 'cerca-target']);
 export class Store {
   constructor(directory) {
     fs.mkdirSync(directory, {recursive: true});
     this.file = path.join(directory, 'cerca-data.json');
-    this.data = {preferences: {'cerca-alerts': [], 'cerca-dataset': 'live', 'cerca-center':{latitude:41.3851,longitude:2.1734,label:'Barcelona'}, 'cerca-pages':2}, imported: [], live:[], notified: {}, version:3};
+    this.data = {preferences: {'cerca-alerts': [], 'cerca-dataset': 'live', 'cerca-center':{latitude:41.3851,longitude:2.1734,label:'Barcelona'}, 'cerca-target':DEFAULT_MATCH_TARGET}, imported: [], live:[], notified: {}, version:4};
     if (fs.existsSync(this.file)) {
       try {
         const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
         if (!parsed.preferences || !Array.isArray(parsed.imported)) throw new Error();
         this.data = {...this.data, ...parsed,preferences:{...this.data.preferences,...parsed.preferences}};
-        if(!parsed.version||parsed.version<3){this.data.preferences['cerca-dataset']='live';this.data.version=3;}
+        if(!parsed.version||parsed.version<3)this.data.preferences['cerca-dataset']='live';
+        delete this.data.preferences['cerca-pages'];
+        if(!MATCH_TARGETS.includes(this.data.preferences['cerca-target']))this.data.preferences['cerca-target']=DEFAULT_MATCH_TARGET;
+        this.data.version=Math.max(4,parsed.version||0);
       } catch { throw new Error('El archivo de datos locales no se puede leer. Se conserva sin sobrescribirlo.'); }
     }
   }
-  scheduleFlush(){if(this.flushTimer)return;this.flushTimer=setTimeout(()=>this.flush(),300);this.flushTimer.unref();}
+  scheduleFlush(){if(this.flushTimer)return;this.flushTimer=setTimeout(()=>this.flush(),3000);this.flushTimer.unref();}
   flush(data = this.data) {
     clearTimeout(this.flushTimer);this.flushTimer=null;
     const temp = this.file + '.tmp';
@@ -40,7 +44,7 @@ export class Store {
     if (key === 'cerca-recent' && (!Array.isArray(value) || value.length > 5 || value.some(s => typeof s !== 'string' || s.length > 500))) throw new Error('Historial no válido.');
     if(key==='cerca-alerts')for(const alert of value)priceRange({minPrice:alert.minPrice,maxPrice:alert.price});
     if(key==='cerca-center'&&(!value||!validCoordinates(value.latitude,value.longitude)||typeof value.label!=='string'||value.label.length>150))throw new Error('Centro de búsqueda inválido.');
-    if(key==='cerca-pages'&&![1,2,4].includes(value))throw new Error('Intensidad de búsqueda no válida.');
+    if(key==='cerca-target'&&!MATCH_TARGETS.includes(value))throw new Error('Objetivo de coincidencias no válido.');
     if(key==='cerca-alerts'&&value.some(a=>a.center&&!validCoordinates(a.center.latitude,a.center.longitude)||a.dataset&&!['live','imported'].includes(a.dataset)))throw new Error('Zona o fuente de alerta inválida.');
     const next = {...this.data, preferences: {...this.data.preferences, [key]: value}};
     if(key==='cerca-alerts'){

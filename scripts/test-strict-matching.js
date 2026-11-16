@@ -11,7 +11,7 @@ for(const request of new Set(cases.map(c=>c.request))){
   const c=group[i],item=[...result.items,...result.rejected].find(p=>p.id===i+1);
   samples.push({name:c.name,request,title:c.listing.title,expected:c.expected,actual:item?.accepted,correct:item?.accepted===c.expected,category:item?.decisionCategory,source:item?.decisionSource,score:item?.match,reason:item?.reason});
  }
- assert.equal(updates.length,group.length,'Cada anuncio produce una decisión individual');
+ assert.equal(updates.length,group.length,'Cada anuncio produce una decisión individual: '+request+' '+JSON.stringify(result.constraints));
 }
 await fs.mkdir('test-results',{recursive:true});
 const report={correct:samples.filter(s=>s.correct).length,total:samples.length,falsePositives:samples.filter(s=>!s.expected&&s.actual),falseNegatives:samples.filter(s=>s.expected&&!s.actual),samples};

@@ -5,7 +5,6 @@ import {WallapopProvider} from '../providers/wallapop.js';
 import {Store} from '../desktop/store.js';
 import {SearchService} from '../desktop/search-service.js';
 const store=new Store(path.join(process.cwd(),'.test-data','performance-live'));
-store.data.preferences['cerca-pages']=1;
 const provider=new WallapopProvider(),service=new SearchService({engine:new SearchEngine(),provider,store});
 const results=[];
 for(let run=0;run<2;run++){

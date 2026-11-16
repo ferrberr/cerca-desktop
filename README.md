@@ -6,17 +6,17 @@ Aplicación de escritorio para Windows y Linux (x64, Intel/AMD de 64 bits) con v
 
 Las descargas están en [GitHub Releases](https://github.com/ferrberr/cerca-desktop/releases/latest).
 
-| Sistema | Descarga de Cerca 0.6.0 |
+| Sistema | Descarga de Cerca 0.7.0 |
 | --- | --- |
-| Windows x64 | [Instalador EXE](https://github.com/ferrberr/cerca-desktop/releases/download/v0.6.0/Cerca-0.6.0-windows-x64-setup.exe) |
-| Linux x64 | [AppImage](https://github.com/ferrberr/cerca-desktop/releases/download/v0.6.0/Cerca-0.6.0-linux-x64.AppImage) |
-| Debian/Ubuntu x64 | [Paquete DEB](https://github.com/ferrberr/cerca-desktop/releases/download/v0.6.0/Cerca-0.6.0-linux-x64.deb) |
+| Windows x64 | [Instalador EXE](https://github.com/ferrberr/cerca-desktop/releases/download/v0.7.0/Cerca-0.7.0-windows-x64-setup.exe) |
+| Linux x64 | [AppImage](https://github.com/ferrberr/cerca-desktop/releases/download/v0.7.0/Cerca-0.7.0-linux-x64.AppImage) |
+| Debian/Ubuntu x64 | [Paquete DEB](https://github.com/ferrberr/cerca-desktop/releases/download/v0.7.0/Cerca-0.7.0-linux-x64.deb) |
 
 El instalador incluye Electron; no hace falta instalar Node.js. Windows permite elegir la carpeta y crea accesos directos. En Linux, el paquete DEB integra Cerca en el menú. Para AppImage:
 
 ```sh
-chmod +x Cerca-0.6.0-linux-x64.AppImage
-./Cerca-0.6.0-linux-x64.AppImage
+chmod +x Cerca-0.7.0-linux-x64.AppImage
+./Cerca-0.7.0-linux-x64.AppImage
 ```
 
 El archivo `SHA256SUMS` de cada release permite comprobar las descargas. La distribución Windows todavía no dispone de un certificado comercial de firma de código. Las compilaciones oficiales de este repositorio se publican después de superar las pruebas en Windows y Linux.
@@ -47,7 +47,7 @@ Para preparar modelos desde la terminal, con Ollama abierto, ejecuta `npm run mo
 1. Selecciona **Wallapop en directo** junto al buscador. Es la opción predeterminada.
 2. Describe el producto que buscas; por ejemplo, «MacBook Air M2 completo y funcionando, hasta 900 euros».
 3. Ajusta precio mínimo y máximo, estado y zona. Pulsa **Buscar**.
-4. Cerca empieza a procesar la primera página mientras las demás se recogen en segundo plano. Prioriza candidatos por coincidencia textual; recurre a embeddings si no hay coincidencias léxicas. Lee las fichas y decide qué anuncios encajan.
+4. Cerca procesa la primera página en cuanto llega. Comprueba la ficha pública de cada candidato y muestra cada coincidencia inmediatamente. Mientras falten resultados, solicita otra página.
 5. Los resultados se ordenan inicialmente por menor precio. Puedes ordenar por afinidad o distancia.
 6. Abre un producto para ver su galería real, descripción, estado, disponibilidad, características, vendedor público, valoraciones y fecha de consulta. **Ver anuncio real** abre su página original en el navegador del sistema.
 
@@ -55,13 +55,15 @@ Para preparar modelos desde la terminal, con Ollama abierto, ejecuta `npm run mo
 
 ### Coincidencias estrictas
 
-Se exige que el objeto vendido sea el producto solicitado, con su modelo/generación y todos los requisitos explícitos confirmados. Una relación de compatibilidad o una marca compartida no bastan. Las decisiones `match` con probabilidad interna inferior a 0,90 se descartan por falta de certeza; ese umbral no es una probabilidad de acierto calibrada. Los requisitos no especificados (RAM, almacenamiento, color, etc.) siguen siendo libres.
+La misma evaluación se aplica a cualquier producto. El modelo comprueba por separado la identidad de lo vendido, los requisitos explícitos de la petición y el contenido real de la oferta. Reconoce abreviaturas, errores ortográficos, equivalencias de unidades y cantidades totales de un conjunto. Los atributos que el usuario no pide quedan libres.
 
-Los alias `play 5`, `PS5` y `PlayStation 5` se normalizan también en las consultas a la fuente y en los textos comparados por el modelo. Para una consola PlayStation con generación explícita se comprueba además la identidad con reglas: PS4 con cinco juegos no es PS5, y un mando, juego o caja para PS5 no es una consola PS5. Los anuncios con generación desconocida no se aceptan por suposición. Si se buscan expresamente juegos o mandos, se evalúa ese objeto. Un pack que sí incluye la consola puede incluir juegos y accesorios.
+Cada comprobación distingue un requisito satisfecho, una contradicción y la información que falta. Para aceptar el anuncio, las tres comprobaciones deben estar confirmadas. Una contradicción o información ausente en cualquiera de ellas descarta el candidato. La afinidad es una valoración del modelo y no representa una probabilidad de acierto calibrada.
 
-La IA recibe la descripción disponible completa, sin recortarla a 1200 caracteres. Si falla la lectura de la ficha pública, ese anuncio se excluye de la selección. Un cambio de precio, modelo, descripción o estado invalida la decisión anterior; una decisión nueva validada se conserva.
+La descripción completa permite contrastar el título, el precio por unidad, las unidades que siguen disponibles y los objetos excluidos de la venta. Un conjunto que incluye el objeto solicitado puede encajar. Un anuncio que solo lo menciona por compatibilidad o posibilidad de ampliación debe descartarse. Las decisiones de elegibilidad las toma el modelo con el mismo criterio para todas las categorías.
 
-Cada descarte por identidad indica su causa y no se atribuye falsamente a una inferencia del modelo. La nueva versión de criterio invalida las claves de caché anteriores. Las pruebas de integración están en `test-results/strict-matching.json`; el conjunto de 38 casos combina coincidencias válidas, descartes y búsquedas explícitas de accesorios. La regresión general de 52 casos se guarda en `test-results/strict-general-regression.json`.
+Los alias conocidos se normalizan para mejorar las consultas y la lectura de los textos. El plan de búsqueda mantiene las restricciones del usuario. Los filtros inferidos de precio y estado incluyen el fragmento de la petición que los justifica y se ignoran si ese fragmento no existe en ella.
+
+Cada decisión conserva las tres comprobaciones. Un cambio en los criterios invalida la caché de decisiones anteriores. Los filtros deterministas de precio, estado, disponibilidad y radio continúan ejecutándose por separado.
 
 ### Acceso a los anuncios
 
@@ -75,9 +77,11 @@ No se necesitan credenciales. Cerca se identifica como aplicación propia; no us
 
 La consulta anterior fallaba porque usaba el endpoint antiguo sin el contexto requerido por el flujo actual. El conector nuevo se ha probado con respuestas reales HTTP 200. Si la fuente limita consultas o cambia, se muestra un error explícito. No se sustituyen resultados reales por anuncios ficticios.
 
-**Es una búsqueda acotada, no un inventario completo de todo Wallapop.** Se consultan hasta dos variantes y dos órdenes de resultados, con límites de páginas. Preferencias ofrece búsqueda rápida, normal o amplia (1, 2 o 4 páginas por consulta/orden). Los candidatos se evalúan individualmente hasta agotar los anuncios recogidos o alcanzar 200 coincidencias aceptadas. Se anticipa la lectura de hasta tres fichas, sin aumentar la frecuencia de solicitudes a Wallapop; cada decisión espera a los datos de su propia ficha y cada coincidencia aparece inmediatamente, sin esperar al resto. El máximo de 200 también se aplica a cuadrícula, mapa y guardados. Los anuncios descartados no consumen ese límite.
+El objetivo inicial es encontrar **100 productos que cumplan tus filtros**. Puedes elegir 100, 150 o 200 en **Preferencias → Objetivo de coincidencias**. Cerca alterna páginas ordenadas por relevancia y por precio, y utiliza la segunda formulación de la consulta cuando está disponible. Recuerda los anuncios ya vistos entre páginas. Los descartados, los duplicados y las fichas que no se pueden verificar no cuentan para el objetivo.
 
-Se deja una separación de al menos 550 ms entre solicitudes, las búsquedas se cachean durante un minuto y las fichas durante 15 minutos. La cancelación interrumpe red e inferencia. Los códigos 403 y 429 detienen el proceso; no hay bucles de reintentos para evadir límites.
+El progreso muestra los anuncios recibidos, las decisiones y las coincidencias. Cuando se alcanza el objetivo, se detienen las peticiones de páginas y fichas. Si Wallapop agota los anuncios o no permite seguir paginando, Cerca indica por qué ha terminado con menos resultados. Al cancelar, puedes seguir consultando los productos ya validados.
+
+Se deja una separación inicial de al menos 1200 ms entre solicitudes, las búsquedas se cachean durante un minuto y las fichas durante 15 minutos. La cancelación interrumpe red e inferencia. Un 403 aislado al consultar una ficha excluye ese anuncio. Tres fichas denegadas consecutivas en un minuto detienen las peticiones pendientes. Las respuestas 429 y 503 activan hasta tres reintentos con pausas de 1, 2 y 4 minutos, ampliadas cuando Retry-After lo indica. Durante la pausa la cola de red queda detenida y puedes cancelar. Un 403 solo se reintenta automáticamente cuando el servidor proporciona Retry-After. Las denegaciones persistentes conservan el resultado parcial.
 
 ## Mapa real
 
@@ -109,18 +113,10 @@ Fuentes: [Leaflet 1.9.4](https://leafletjs.com/reference-1.9.4.html), [política
 | Aceptar o descartar anuncios | `nimble:9b-q4_K_M` | Nimble 9B Q4_K_M | 5,6 GB |
 | Recuperación semántica | `qwen3-embedding:0.6b` | Qwen3 Embedding 0.6B Q8_0 | 639 MB |
 
-Los modelos utilizados tienen licencia Apache 2.0. Nimble es un modelo especializado en decisiones: se usa mediante `/v1/systemone` con una clasificación tipada, sin generar explicaciones palabra por palabra. Se ha elegido por su precisión en la comparación local: 51/52 casos frente a 50/52 de Tev1 0.8B y 49/52 de Tev1 4B. Esta muestra no garantiza resultados perfectos en otros anuncios. Las categorías distinguen producto compatible, accesorio, modelo distinto, avería y requisito ausente.
+Los modelos utilizados tienen licencia Apache 2.0. Qwen3.5 9B fija el objeto y los requisitos de la petición sin recibir anuncios. Cada requisito conserva un fragmento literal de la consulta. Esta interpretación se reutiliza para los candidatos de la misma consulta. Nimble compara cada anuncio con ese objetivo fijo, mediante comprobaciones separadas de identidad, requisitos y oferta. El procedimiento es idéntico para cualquier categoría.
 
-Qwen3.5 se conserva para interpretar peticiones complejas; las búsquedas literales no necesitan esa llamada. El alias `cerca-planner:9b` reutiliza los pesos de Qwen ya instalados. La aplicación utiliza Ollama exclusivamente en `127.0.0.1:11434`, sin claves ni suscripciones. El asistente no elimina otros modelos de Ollama. Los nombres, tamaños y digests están en `ai/models.lock.json`. La API tipada requiere una versión de Ollama compatible con decisiones (verificada aquí con 0.40.15). Fuentes: [Nimble](https://ollama.com/library/nimble:9b-q4_K_M) y [API de decisiones de Ollama](https://docs.ollama.com/capabilities/decision).
+El alias `cerca-planner:9b` reutiliza los pesos de Qwen ya instalados. La aplicación utiliza Ollama en `127.0.0.1:11434`. Los nombres, tamaños y digests están en `ai/models.lock.json`. Los modelos de instalaciones anteriores pueden conservarse.
 
-```sh
-npm run models:status
-npm run models:install
-```
-
-La inferencia es local. La búsqueda de anuncios, las fotos y la cartografía necesitan Internet. Los modelos pueden equivocarse: la afinidad de 0 a 100 es una valoración del modelo, no una probabilidad calibrada. Los filtros de presupuesto, radio, disponibilidad y estado se ejecutan también con código determinista. Si una decisión llega incompleta, con JSON inválido, identificador inventado o campos fuera de rango, se repite el mismo anuncio hasta obtener una decisión válida, sin límite de intentos. Se valida la categoría, las probabilidades y su normalización antes de publicar cada resultado. Los reintentos admiten cancelación durante la espera. Los fallos de red o la ausencia de Ollama se muestran como errores; no se confunden con una decisión inválida. Los resultados ya validados permanecen visibles al cancelar o ante un error posterior.
-
-El precio mínimo y máximo se aplican de forma inclusiva a la consulta de la fuente, la validación local, la cuadrícula, el mapa y las alertas. Un mínimo vacío equivale a 0; el máximo vacío en el filtro general elimina el límite superior. Un rango con mínimo mayor que máximo se rechaza. Los límites explícitos escritos en la búsqueda se combinan con los de la interfaz usando el rango más estricto.
 
 ## Alertas
 
@@ -150,15 +146,15 @@ La interfaz carga archivos locales mediante `file://`, con aislamiento de contex
 ## Optimización de latencia
 
 - Las páginas se entregan progresivamente; el primer resultado no espera a recopilar todo el catálogo.
-- Consultas literales usan un plan directo. Las peticiones complejas se interpretan con Qwen3.5 9B y los anuncios se clasifican con Nimble 9B.
+- Consultas literales usan un plan directo. Las peticiones complejas se interpretan con Qwen3.5 9B y los requisitos se fijan una vez con Qwen3.5 9B y cada anuncio se evalúa con Nimble.
 - Se priorizan coincidencias léxicas sin indexar todos los anuncios antes de empezar. Los embeddings se usan cuando la búsqueda no tiene una coincidencia textual.
 - La lectura anticipada de hasta tres fichas se solapa con la inferencia, respetando la separación de 550 ms entre peticiones. Las decisiones siguen siendo individuales y secuenciales.
-- Clasificación tipada en lugar de generación de JSON y explicaciones por anuncio. Permanencia del modelo en memoria de 15 minutos. Cerca precarga Nimble al abrirse. No se han cambiado controladores ni la configuración global de Ollama.
+- Interpretación de requisitos reutilizable por consulta y clasificación estructurada por anuncio. Permanencia de los modelos en memoria durante 15 minutos. Cerca precarga el evaluador al abrirse.
 - Caché persistente de decisiones válidas durante 15 minutos, ligada a versión del criterio, modelo, anuncio, consulta, restricciones y contenido. Antes de reutilizarla se comprueban los datos actuales de la ficha según la caché de la fuente. Si cambia precio, descripción o petición, se vuelve a evaluar. Los resultados inválidos nunca se guardan como decisiones válidas.
 - Escrituras agrupadas a disco y reutilización de tarjetas y filas existentes. El mapa conserva su instancia, mosaicos, zoom y formulario mientras llegan resultados y cambian los filtros. Solo se actualizan los marcadores y filas que cambian.
 - Cachés de embeddings y localidades limitadas a 2048 y 256 entradas, con expulsión de las menos utilizadas. Las lecturas simultáneas de una ficha reutilizan la respuesta de la primera petición encolada.
 
-En la comparación de 52 casos, Nimble tuvo una mediana de 298 ms por decisión con el modelo cargado, frente a aproximadamente 1,5 s por anuncio del anterior decisor Qwen. En el catálogo fijo de ocho anuncios, la nueva integración mostró la primera coincidencia a los 362 ms y terminó en 2,84 s sin reutilizar decisiones. Evidencias: `test-results/decision-model-comparison.json` y `test-results/performance-nimble.json`. Los tiempos dependen del hardware y la carga; esta medición excluye descargas de anuncios y arranca con Nimble en memoria. Las referencias anteriores de 6,3 s hasta el primer resultado y 16,4 s totales incluían cargar Qwen, por lo que no son una comparación exclusiva de inferencia.
+La primera interpretación de una consulta añade una llamada local a Qwen. Las consultas repetidas reutilizan hasta 128 interpretaciones recientes. El coste por anuncio depende del equipo y de la longitud de la descripción. El primer resultado sigue apareciendo al quedar validado. `npm run benchmark:precision` mide decisiones reales en varias categorías y guarda aciertos, errores y tiempos en `test-results/general-precision.json`.
 
 La mejora de inferencia no multiplica en la misma proporción la velocidad de Wallapop: se mantiene la separación de 550 ms entre peticiones y puede dominar el tiempo de lectura de fichas. Una repetición con datos idénticos reutiliza decisiones validadas. Las pruebas anteriores con anuncios reales están en `test-results/performance-live.json`.
 
@@ -167,7 +163,7 @@ node scripts/benchmark-search.js   # Catálogo fijo; datos detallados de carga, 
 node scripts/benchmark-live.js     # Wallapop real; primera y segunda pasada, ocho candidatos
 ```
 
-El perfilado tiene un límite de ocho candidatos solo para comparar tiempos; la aplicación conserva el límite de 200 coincidencias, los descartes y los reintentos ilimitados de respuestas inválidas.
+El perfilado tiene un límite de ocho candidatos solo para comparar tiempos; la búsqueda normal usa el objetivo de coincidencias configurado y reintenta las decisiones inválidas hasta obtener una válida o cancelar.
 
 ## Verificación
 

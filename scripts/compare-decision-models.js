@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import {Ollama} from '../ai/ollama.js';
-import {systemDecision} from '../ai/systemone.js';
+import {reviewDecision} from '../ai/judge.js';
+import {MODELS} from '../ai/config.js';
 const catalog=JSON.parse(await fs.readFile('catalog/demo.json','utf8'));
 const cases=catalog.map(p=>({name:'demo-'+p.id,request:'MacBook Air M2 completo y funcionando',listing:p,expected:p.id<=6}));
 const extra=[
@@ -53,12 +54,12 @@ const heldout=[
  ['spares-wrong','MacBook Air M2 para reparar',{title:'MacBook Air M1 averiado',description:'Para reparar, modelo M1.'},false],
 ];
 cases.push(...heldout.map(([name,request,listing,expected])=>({name,request,listing:{id:1,spec:'',price:650,condition:'Buen estado',city:'Barcelona',...listing},expected})));
-const client=new Ollama(),models=process.env.CERCA_COMPARE_MODELS?.split(',')||['tev1:0.8b-q8_0','tev1:4b-q4_K_M','nimble:9b-q4_K_M'],results=[];
+const client=new Ollama(),models=process.env.CERCA_COMPARE_MODELS?.split(',')||[MODELS.decision],results=[];
 for(const model of models){
  const samples=[];
  for(let index=0;index<cases.length;index++){
   const c=cases[index],start=performance.now();
-  try{const decision=await systemDecision(client,model,{request:c.request,listing:c.listing});samples.push({name:c.name,expected:c.expected,actual:decision.accept,correct:decision.accept===c.expected,category:decision.category,confidence:decision.confidence,ms:Math.round(performance.now()-start)});}
+  try{const decision=await reviewDecision(client,model,{request:c.request,listing:c.listing});samples.push({name:c.name,expected:c.expected,actual:decision.accept,correct:decision.accept===c.expected,category:decision.category,confidence:decision.confidence,ms:Math.round(performance.now()-start)});}
   catch(error){samples.push({name:c.name,expected:c.expected,correct:false,error:error.message,ms:Math.round(performance.now()-start)});}
  }
  const warm=samples.slice(1).map(p=>p.ms).sort((a,b)=>a-b);

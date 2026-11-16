@@ -378,5 +378,175 @@
       "spec": ""
     },
     "expected": false
+  },
+  {
+    "name": "ram-kit-kingston",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "2x Memoria RAM Kingston 8GB DDR4 2666MHz ECC",
+      "description": "",
+      "spec": ""
+    },
+    "expected": true
+  },
+  {
+    "name": "ram-kit-typo",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Menoria RAM 16GB (2x8GB) DDR4",
+      "description": "",
+      "spec": ""
+    },
+    "expected": true
+  },
+  {
+    "name": "ram-single",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Memoria RAM 16GB DDR4",
+      "description": "",
+      "spec": ""
+    },
+    "expected": true
+  },
+  {
+    "name": "ram-four",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Kit RAM DDR4 4 x 4GB",
+      "description": "Kit completo de cuatro módulos.",
+      "spec": ""
+    },
+    "expected": true
+  },
+  {
+    "name": "ram-ecc",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Memoria RAM DDR4 16 GB ECC Registered",
+      "description": "",
+      "spec": ""
+    },
+    "expected": true
+  },
+  {
+    "name": "ram-laptop",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Kit RAM SO-DIMM DDR4 16GB (2x8GB)",
+      "description": "",
+      "spec": ""
+    },
+    "expected": true
+  },
+  {
+    "name": "ram-eight",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Memoria RAM DDR4 8GB",
+      "description": "Un módulo de 8GB.",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-thirtytwo",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Kit RAM DDR4 32GB (2x16GB)",
+      "description": "Se vende el kit completo.",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-ddr3",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Kit RAM DDR3 16GB (2x8GB)",
+      "description": "",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-ddr5",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Kit RAM DDR5 16GB (2x8GB)",
+      "description": "",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-unknown",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Memoria RAM DDR4",
+      "description": "Capacidad sin indicar.",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-per-unit",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "2x Memoria RAM Kingston 8GB DDR4 2666MHz ECC",
+      "description": "Precio por unidad. Se venden por separado, el precio anunciado corresponde a un solo módulo de 8GB.",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-contradiction",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Menoria RAM 16GB (2x8GB) DDR4",
+      "description": "Solo queda uno de 8GB; el otro ya está vendido.",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-computer",
+    "request": "ram ddr4 16 gb",
+    "listing": {
+      "title": "Ordenador con 16 GB RAM DDR4",
+      "description": "Vendo el ordenador completo. No vendo la RAM suelta.",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-one-only",
+    "request": "ram ddr4 16 gb un solo modulo",
+    "listing": {
+      "title": "Kit RAM DDR4 16GB (2x8GB)",
+      "description": "",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-no-ecc",
+    "request": "ram ddr4 16 gb sin ECC",
+    "listing": {
+      "title": "2x Memoria RAM Kingston 8GB DDR4 2666MHz ECC",
+      "description": "",
+      "spec": ""
+    },
+    "expected": false
+  },
+  {
+    "name": "ram-non-ecc",
+    "request": "ram ddr4 16 gb sin ECC",
+    "listing": {
+      "title": "Kit RAM DDR4 16GB (2x8GB) no ECC",
+      "description": "",
+      "spec": ""
+    },
+    "expected": true
   }
 ]

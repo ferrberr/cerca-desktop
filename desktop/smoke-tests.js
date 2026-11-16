@@ -13,7 +13,8 @@ export async function runSmoke(window,root,app) {
       document.querySelector('#search-form').requestSubmit();
       const firstVisible=await new Promise((resolve,reject)=>{const started=Date.now();const tick=()=>{const count=document.querySelectorAll('.product-card').length;if(count)return resolve({count,searching:document.querySelector('#search-form button[type="submit"]').disabled});if(Date.now()-started>180000)return reject(new Error('No llegaron resultados progresivos'));setTimeout(tick,100);};tick();});
       if(!firstVisible.searching)throw new Error('Los productos solo se muestran al finalizar');
-      await window.cercaLastSearch;
+      const demoResult=await window.cercaLastSearch;
+      if(demoResult?.targetResults!==100||demoResult.stopReason!=='exhausted'||document.querySelector('#match-summary strong').textContent!=='Fin del catálogo'||!document.querySelector('#match-summary p').textContent.includes('6 de 100 coincidencias'))throw new Error('El resumen debe indicar que el catálogo se agotó tras seis coincidencias');
       const count=document.querySelectorAll('.product-card').length;
       const reasons=[...document.querySelectorAll('.product-card .match-percent')].map(e=>e.textContent);
       if(count!==6)throw new Error('Se esperaban 6 equipos M2; recibidos '+count);
@@ -40,6 +41,11 @@ export async function runSmoke(window,root,app) {
       document.querySelector('#settings-button').click();
       const modelPanel=document.querySelectorAll('.model-row').length===3;
       if(!modelPanel)throw new Error('No se muestran los tres modelos en Preferencias');
+      const target=document.querySelector('#match-target');
+      target.value='150';
+      target.dispatchEvent(new Event('change',{bubbles:true}));
+      const preferences=await window.cercaDesktop.bootstrap();
+      if(preferences.value.preferences['cerca-target']!==150)throw new Error('No se ha guardado el objetivo escogido');
       document.querySelector('#close-modal').click();
       const nativeNotification=await window.cercaDesktop.testNotification();
       if(!nativeNotification.ok)throw new Error(nativeNotification.error);
@@ -57,7 +63,8 @@ export async function runSmoke(window,root,app) {
       document.querySelector('#search-form').requestSubmit();
       const streamingCanvas=document.querySelector('#real-map');
       const streamingMapId=window.cercaMapDebug().instanceId;
-      await window.cercaLastSearch;
+      const importedResult=await window.cercaLastSearch;
+      if(importedResult?.targetResults!==150||!document.querySelector('#match-summary p').textContent.includes('8 de 150 coincidencias'))throw new Error('El mapa debe usar el objetivo de Preferencias');
       if(document.querySelector('#real-map')!==streamingCanvas||window.cercaMapDebug().instanceId!==streamingMapId)throw new Error('El mapa se reconstruye durante la búsqueda progresiva');
       const streamingMapMarkers=window.cercaMapDebug().markers;
       if(streamingMapMarkers!==8)throw new Error('El mapa debe mostrar las ocho PS5 validadas');

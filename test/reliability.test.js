@@ -54,7 +54,7 @@ test('a fresh validated decision after a price drop remains analyzed in the stor
   const store = {data: {live: [{...item, ...analysis, price: 700}], imported: [], preferences: {}}, scheduleFlush() {}};
   const engine = new SearchEngine({ollama: {decide: async () => verdict}});
   const provider = {
-    search: async (_plan, _limits, {onPage}) => {onPage([item], {pages: 1}); return {pages: 1};},
+    async *searchPages() {yield {items: [item], pages: 1, hasMore: false};},
     enrich: async items => ({items, errors: []}),
   };
   const result = await new SearchService({store, engine, provider}).search('MacBook Air M2', limits);
@@ -62,6 +62,85 @@ test('a fresh validated decision after a price drop remains analyzed in the stor
   assert.equal(store.data.live[0].price, 650);
   assert.equal(store.data.live[0].analyzed, true);
   assert.equal(store.data.live[0].accepted, true);
+});
+
+test('existing profiles use a target of 100 and can persist a higher target without losing their settings', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cerca-search-target-'));
+  try {
+    const file = path.join(directory, 'cerca-data.json');
+    fs.writeFileSync(file, JSON.stringify({version: 3, imported: [item], live: [], preferences: {
+      'cerca-dataset': 'imported', 'cerca-pages': 1, 'cerca-favorites': [item.id],
+    }}));
+    const store = new Store(directory);
+    assert.equal(store.data.preferences['cerca-target'], 100);
+    assert.equal(store.data.preferences['cerca-dataset'], 'imported');
+    assert.ok(!Object.hasOwn(store.data.preferences, 'cerca-pages'));
+    assert.throws(() => store.setPreference('cerca-target', 20));
+    assert.throws(() => store.setPreference('cerca-target', 201));
+    for (const target of [150, 200]) {
+      store.setPreference('cerca-target', target);
+      const saved = new Store(directory);
+      assert.equal(saved.data.preferences['cerca-target'], target);
+      assert.deepEqual(saved.data.preferences['cerca-favorites'], [item.id]);
+      assert.deepEqual(saved.data.imported, [item]);
+    }
+  } finally {fs.rmSync(directory, {recursive:true, force:true});}
+});
+
+test('live searches request enough pages for the saved match target and attach metadata to the same page', async () => {
+  for (const target of [100, 150, 200]) {
+    const store = {data: {live: [], preferences: {'cerca-target': target}}, scheduleFlush() {}};
+    const engine = new SearchEngine({ollama: {decide: async (_model, data) => ({...verdict, accept: data.listing.price === 650})}});
+    const firstMatchPage = 6;
+    const pageSize = 10;
+    let requested = 0;
+    let closed = false;
+    const provider = {
+      async *searchPages() {
+        try {
+          while (true) {
+            requested++;
+            const items = Array.from({length: pageSize}, (_, i) => ({...item, id: requested*pageSize+i, price: requested<firstMatchPage?200:650}));
+            yield {items, pages: requested, hasMore: true};
+          }
+        } finally {closed=true;}
+      },
+      enrich: async items => ({items, errors: []}),
+    };
+    const service = new SearchService({store, engine, provider});
+    let emitted = 0;
+    const report = await service.search('MacBook Air M2', limits, 'live', {onUpdate(update) {
+      if (update.type==='catalog') assert.equal(update.source.pages, requested);
+      if (update.type==='decision' && update.item.accepted) {
+        assert.ok(store.data.live.some(p => p.id===update.item.id && p.accepted));
+        if (emitted++ === 0) assert.equal(requested, firstMatchPage);
+      }
+    }});
+    assert.equal(emitted, target);
+    assert.equal(report.targetResults, target);
+    assert.equal(report.stopReason, 'target');
+    assert.equal(report.rejectedCount, 50);
+    assert.equal(requested, firstMatchPage-1+target/pageSize);
+    assert.equal(report.source.pages, requested);
+    assert.ok(closed);
+  }
+});
+
+test('an incomplete pagination reports a source limit, even when the last page contains only duplicates', async () => {
+  const store = {data:{live:[], preferences:{}}, scheduleFlush() {}};
+  const engine = new SearchEngine({ollama:{decide:async () => verdict}});
+  const provider = {
+    async *searchPages() {
+      yield {items:[item], pages:1, hasMore:true, paginationStalled:false};
+      yield {items:[], pages:2, hasMore:false, paginationStalled:true};
+    },
+    enrich:async items => ({items, errors:[]}),
+  };
+  const report = await new SearchService({engine, store, provider}).search('MacBook Air M2', limits);
+  assert.equal(report.stopReason, 'source_limit');
+  assert.equal(report.source.pages, 2);
+  assert.equal(report.total, 1);
+  assert.equal(report.items.length, 1);
 });
 
 test('changed description, model or condition removes an obsolete decision and unrelated metadata preserves it', () => {

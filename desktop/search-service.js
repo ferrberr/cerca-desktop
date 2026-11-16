@@ -1,10 +1,11 @@
 import {mergeListing} from '../shared/listings.js';
-import {AsyncQueue} from '../shared/async-queue.js';
 import {DEFAULT_CENTER} from '../shared/geo.js';
+import {DEFAULT_MATCH_TARGET} from '../shared/limits.js';
 export class SearchService {
  constructor({engine,provider,store,demo=[]}){Object.assign(this,{engine,provider,store,demo});}
  allProducts(){return [...this.demo,...this.store.data.imported,...(this.store.data.live||[])];}
  remember(items){
+  if(!items.length)return;
   const all=new Map((this.store.data.live||[]).map(p=>[p.id,p]));
   for(const p of items)all.set(p.id,mergeListing(all.get(p.id),p));
   const favorites=new Set(this.store.data.preferences['cerca-favorites']||[]);
@@ -12,26 +13,49 @@ export class SearchService {
   if(this.store.scheduleFlush)this.store.scheduleFlush();else this.store.flush();
  }
  async search(query,constraints,dataset='live',context={}){
-  let fetched;
   const live=dataset==='live';
-  const options={...context,onUpdate:async update=>{
-   if(live&&update.type==='decision')this.remember([update.item]);
-   await context.onUpdate?.(update.type==='catalog'?{...update,source:fetched?{name:'Wallapop',...fetched,items:undefined}:undefined}:update);
-  }};
-  if(live)options.enrich=async(items,ctx)=>{const enriched=await this.provider.enrich(items,ctx);this.remember(enriched.items);return enriched;};
-  const catalog=live?async(plan,effective,ctx)=>{
-   if(effective.source&& !['Todos','Wallapop'].includes(effective.source))throw new Error('La fuente automática disponible es Wallapop. Selecciónala o elige Todas.');
-   const fetchController=new AbortController();
-   const queue=new AsyncQueue(()=>fetchController.abort());
-   const signal=AbortSignal.any([fetchController.signal,...(ctx.signal?[ctx.signal]:[])]);
-   this.provider.search(plan,effective,{...ctx,signal,pages:this.store.data.preferences['cerca-pages']||2,onPage:(items,metadata)=>{
-    fetched=metadata;this.remember(items);if(items.length)queue.push(items);
-   }}).then(result=>{fetched=result;queue.finish();},error=>queue.finish(error));
-   return queue;
-  }:dataset==='demo'?this.demo:this.store.data.imported;
-  const report=await this.engine.search(query,catalog,constraints,options);
-  if(live)this.remember([...report.items,...report.rejected]);
-  return {...report,dataset,...(fetched?{source:{name:'Wallapop',pages:fetched.pages,queries:fetched.queries,hasMore:fetched.hasMore,fetchedAt:fetched.fetchedAt,skippedInvalid:fetched.skippedInvalid}}:{}),catalogItems:live?(this.store.data.live||[]):undefined};
+  const options={targetResults:this.store.data.preferences['cerca-target']??DEFAULT_MATCH_TARGET,...context};
+  if(!live){
+   const catalog=dataset==='demo'?this.demo:this.store.data.imported;
+   return {...await this.engine.search(query,catalog,constraints,options),dataset};
+  }
+
+  let source;
+  const sourceStop=new AbortController();
+  const onAccessLimit=error=>sourceStop.abort(error);
+  const networkContext=ctx=>({
+   ...ctx,onAccessLimit,onWait:context.onProgress,signal:ctx.signal?AbortSignal.any([ctx.signal,sourceStop.signal]):sourceStop.signal,
+  });
+  const known=new Set((this.store.data.live||[]).map(item=>item.id));
+  // Refresh stored entries and save each new match before the UI can open its detail.
+  // Other candidates only need to live in the page currently being evaluated.
+  const refreshKnown=items=>this.remember(items.filter(item=>known.has(item.id)));
+  options.enrich=async(items,ctx)=>{
+   const enriched=await this.provider.enrich(items,networkContext(ctx));
+   refreshKnown(enriched.items);
+   return enriched;
+  };
+  options.onUpdate=async update=>{
+   if(update.type==='decision'){
+    if(update.item.accepted)known.add(update.item.id);
+    refreshKnown([update.item]);
+   }
+   await context.onUpdate?.(update.type==='catalog'?{...update,source}:update);
+  };
+
+  const provider=this.provider;
+  async function* pages(plan,effective,ctx){
+   if(effective.source&&!['Todos','Wallapop'].includes(effective.source))throw new Error('La fuente automática disponible es Wallapop. Selecciónala o elige Todas.');
+   for await(const {items,...metadata} of provider.searchPages(plan,effective,networkContext(ctx))){
+    source={name:'Wallapop',...metadata};
+    refreshKnown(items);
+    yield items;
+   }
+  }
+  const report=await this.engine.search(query,pages,constraints,options);
+  this.remember(report.rejected);
+  const stopReason=report.stopReason==='exhausted'&&source?.paginationStalled?'source_limit':report.stopReason;
+  return {...report,dataset,source,stopReason,catalogItems:this.store.data.live};
  }
  async detail(id,{center=DEFAULT_CENTER,signal,force=false}={}){
   const item=this.allProducts().find(p=>p.id===id);if(!item)throw new Error('No se encuentra el anuncio.');

@@ -10,4 +10,4 @@ export const MODEL_SOURCES = {
   embedding: 'https://ollama.com/library/qwen3-embedding:0.6b',
 };
 
-export const MODEL_LABELS={planner:'Qwen3.5 9B',decision:'Nimble 9B',embedding:'Qwen3 Embedding 0.6B'};
+export const MODEL_LABELS={planner:'Qwen3.5 9B',decision:'Nimble 9B · Requisitos fijados',embedding:'Qwen3 Embedding 0.6B'};

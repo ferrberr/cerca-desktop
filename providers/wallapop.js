@@ -1,3 +1,4 @@
+import {setTimeout as wait} from 'node:timers/promises';
 import {createHash} from 'node:crypto';
 import {distanceKm,DEFAULT_CENTER,validCoordinates} from '../shared/geo.js';
 
@@ -62,89 +63,185 @@ export function parsePublicPage(html){
  if(!page?.item)throw new ProviderError('El anuncio ya no está disponible.','NOT_FOUND');
  return {item:page.item,seller:page.itemSeller};
 }
+const publicPageKey = url => 'public-page:' + url;
+
 export class WallapopProvider {
- constructor({fetchImpl=fetch,cache=new Map(),intervalMs=550,now=()=>Date.now()}={}){this.fetch=fetchImpl;this.cache=cache;this.intervalMs=intervalMs;this.now=now;this.tail=Promise.resolve();this.lastRequest=0;}
- async request(url,{signal,ttl=60_000,json=true}={}){
+ constructor({fetchImpl=fetch,cache=new Map(),intervalMs=1200,now=()=>Date.now(),sleep=wait,retryAttempts=3}={}){this.fetch=fetchImpl;this.cache=cache;this.intervalMs=intervalMs;this.baseIntervalMs=intervalMs;this.now=now;this.tail=Promise.resolve();this.lastRequest=0;this.sleep=sleep;this.retryAttempts=retryAttempts;this.deniedDetails=0;this.lastDeniedDetailAt=0;}
+ async request(url,{signal,ttl=60_000,json=true,parsePage=false,onAccessLimit,onWait=()=>{}}={}){
+  const key=parsePage?publicPageKey(url):url;
   signal?.throwIfAborted();
-  const cached=this.cache.get(url);
+  const cached=this.cache.get(key);
   if(cached&&cached.until>this.now())return cached.data;
   const task=this.tail.catch(()=>{}).then(async()=>{
    signal?.throwIfAborted();
    // Another queued consumer may already have fetched this URL.
-   const queuedCache=this.cache.get(url);
+   const queuedCache=this.cache.get(key);
    if(queuedCache&&queuedCache.until>this.now())return queuedCache.data;
-   const delay=Math.max(0,this.lastRequest+this.intervalMs-this.now());
-   if(delay)await new Promise((resolve,reject)=>{const onAbort=()=>{clearTimeout(timer);reject(signal.reason);};const timer=setTimeout(()=>{signal?.removeEventListener('abort',onAbort);resolve();},delay);signal?.addEventListener('abort',onAbort,{once:true});});
-   this.lastRequest=this.now();
    let response;
-   try{response=await this.fetch(url,{headers:WALLAPOP_HEADERS,signal:AbortSignal.any([AbortSignal.timeout(25_000),...(signal?[signal]:[])]),redirect:'error'});}
-   catch(e){if(signal?.aborted)throw e;throw new ProviderError('No se puede conectar con Wallapop. Comprueba la conexión e inténtalo más tarde.','NETWORK');}
-   if(response.status===429)throw new ProviderError('Wallapop ha limitado las consultas. Espera unos minutos antes de volver a buscar.','RATE_LIMIT');
-   if(response.status===401||response.status===403)throw new ProviderError('Wallapop no permite esta consulta en este momento. No se han mostrado anuncios de ejemplo.','ACCESS_DENIED');
+   for(let attempt=0;;attempt++){
+    const delay=Math.max(0,this.lastRequest+this.intervalMs-this.now());
+    if(delay)await this.sleep(delay,undefined,{signal});
+    signal?.throwIfAborted();
+    this.lastRequest=this.now();
+    try{response=await this.fetch(url,{headers:WALLAPOP_HEADERS,signal:AbortSignal.any([AbortSignal.timeout(25_000),...(signal?[signal]:[])]),redirect:'error'});}
+    catch(error){if(signal?.aborted)throw error;throw new ProviderError('No se puede conectar con Wallapop. Comprueba la conexión e inténtalo más tarde.','NETWORK');}
+    const header=response.headers?.get('retry-after');
+    const retryAfter=header&&/^\d+$/.test(header.trim())?Number(header)*1000:header?Date.parse(header)-this.now():NaN;
+    const retryable=response.status===429||response.status===503||response.status===403&&Number.isFinite(retryAfter);
+    if(retryable&&attempt<this.retryAttempts){
+     const pause=Math.max(60_000*2**attempt,Number.isFinite(retryAfter)?retryAfter:0);
+     this.intervalMs=Math.max(this.intervalMs,Math.min(10_000,1200*2**(attempt+1)));
+     const until=new Date(this.now()+pause).toLocaleTimeString('es-ES');
+     onWait(`Wallapop pide una pausa · reanudación a las ${until} · intento ${attempt+1}/${this.retryAttempts}. Los resultados encontrados siguen disponibles.`);
+     await response.body?.cancel().catch(()=>{});
+     // Hold the shared queue during cooldown so prefetched details and other
+     // callers cannot send requests while the source asks us to wait.
+     let remaining=pause;
+     while(remaining>0){
+      const chunk=Math.min(remaining,60_000);
+      await this.sleep(chunk,undefined,{signal});
+      remaining-=chunk;
+     }
+     continue;
+    }
+    if(response.status===403&&parsePage){
+     if(this.now()-this.lastDeniedDetailAt>60_000)this.deniedDetails=0;
+     this.lastDeniedDetailAt=this.now();
+     this.deniedDetails++;
+     if(this.deniedDetails<3){
+      const error=new ProviderError('No se permite leer esta ficha pública. Se ha excluido este anuncio.','DETAIL_FORBIDDEN');
+      error.status=403;
+      throw error;
+     }
+    }
+    if([401,403,429].includes(response.status)){
+     const error=response.status===429
+      ?new ProviderError('Wallapop sigue limitando las consultas tras las pausas. Los resultados verificados se han conservado.','RATE_LIMIT')
+      :new ProviderError('Wallapop ha denegado el acceso a esta petición (HTTP '+response.status+').','ACCESS_DENIED');
+     error.status=response.status;
+     onAccessLimit?.(error);
+     throw error;
+    }
+    break;
+   }
    if(response.status===404||response.status===410)throw new ProviderError('El anuncio ya no está disponible.','NOT_FOUND');
    if(!response.ok)throw new ProviderError(`Wallapop no ha podido responder (${response.status}).`,'HTTP_ERROR');
-   const data=json?await response.json():await response.text();
+   let data;
+   if(parsePage){data=parsePublicPage(await response.text());this.deniedDetails=0;}
+   else if(json)data=await response.json();
+   else data=await response.text();
    signal?.throwIfAborted();
-   if(this.cache.size>2000)this.cache.delete(this.cache.keys().next().value);
-   this.cache.set(url,{storedAt:this.now(),until:this.now()+ttl,data});return data;
+   this.intervalMs=Math.max(this.baseIntervalMs,this.intervalMs*.9);
+   this.cache.delete(key);
+   if(this.cache.size>=2000)this.cache.delete(this.cache.keys().next().value);
+   this.cache.set(key,{storedAt:this.now(),until:this.now()+ttl,data});return data;
   });
   this.tail=task;return task;
  }
- async search(plan,filters={}, {signal,onProgress=()=>{},onPage=()=>{},pages=2}={}){
-  const center=filters.center||DEFAULT_CENTER;
-  const queries=[plan.product,...plan.queries].map(q=>q.trim()).filter(Boolean).filter((q,i,a)=>a.findIndex(v=>v.toLowerCase()===q.toLowerCase())===i).slice(0,2);
-  const found=new Map();let pageCount=0,hasMore=false;const invalid=[];
-  // Search relevant listings and a price-ordered pass. Each pass is bounded and cancellable.
-  const passes=[{query:queries[0],order:'most_relevance'},...(queries[1]?[{query:queries[1],order:'most_relevance'}]:[]),{query:queries[0],order:'price_low_to_high'}];
-  for(const pass of passes){
-   signal?.throwIfAborted();
-   const params=new URLSearchParams({keywords:pass.query,source:'search_box',order_by:pass.order,latitude:String(center.latitude),longitude:String(center.longitude)});
-   if(filters.zone!=='Todas las zonas')params.set('distance_in_km',String(filters.radius||50));
-   if(Number.isFinite(filters.minPrice)&&filters.minPrice>0)params.set('min_sale_price',String(filters.minPrice));
-   if(Number.isFinite(filters.maxPrice))params.set('max_sale_price',String(filters.maxPrice));
-   const condition={Nuevo:'new','Como nuevo':'as_good_as_new','Buen estado':'good',Aceptable:'fair','Para piezas':'has_given_it_all'}[filters.condition];
-   if(condition)params.set('condition',condition);
-   onProgress(`Consultando Wallapop: ${pass.query}…`);
-   const config=await this.request('https://api.wallapop.com/api/v3/search/components?'+params,{signal});
-   const queryParams=config?.components?.find(c=>c.type==='search_results')?.type_data?.query_params;
-   if(!queryParams||typeof queryParams.search_id!=='string')throw new ProviderError('La estructura de búsqueda de Wallapop ha cambiado.','INVALID_RESPONSE');
-   const section=new URLSearchParams(params);
-   for(const [k,v]of Object.entries(queryParams))if(v!==null&&v!==undefined)section.set(k,String(v));
-   section.set('source','deep_link');section.set('section_type','organic_search_results');
-   for(let page=0;page<pages;page++){
-    onProgress(`Recogiendo anuncios reales · página ${pageCount+1}…`);
-    const result=await this.request('https://api.wallapop.com/api/v3/search/section?'+section,{signal});
-    const items=result?.data?.section?.items;
-    if(!Array.isArray(items))throw new ProviderError('Wallapop devolvió una página sin anuncios reconocibles.','INVALID_RESPONSE');
-    pageCount++;
-    const discovered=[];
-    for(const raw of items){try{const item=normalizeListing(raw,{center});if(item.available&&!item.reserved){if(!found.has(item.id))discovered.push(item);found.set(item.id,item);}}catch(e){invalid.push(e.code||'INVALID_RESPONSE');}}
-    await onPage(discovered,{pages:pageCount,queries,hasMore:Boolean(result.meta?.next_page),skippedInvalid:invalid.length,fetchedAt:this.now()});
-    const next=result.meta?.next_page;hasMore=Boolean(next);
-    if(!next||!items.length)break;
-    if(typeof next!=='string'||next.length>20_000)throw new ProviderError('Paginación de Wallapop no válida.','INVALID_RESPONSE');
-    section.set('next_page',next);
-   }
+ async searchSection(pass,filters,center,requestOptions){
+  const params=new URLSearchParams({keywords:pass.query,source:'search_box',order_by:pass.order,latitude:String(center.latitude),longitude:String(center.longitude)});
+  if(filters.zone!=='Todas las zonas')params.set('distance_in_km',String(filters.radius||50));
+  if(Number.isFinite(filters.minPrice)&&filters.minPrice>0)params.set('min_sale_price',String(filters.minPrice));
+  if(Number.isFinite(filters.maxPrice))params.set('max_sale_price',String(filters.maxPrice));
+  const condition={Nuevo:'new','Como nuevo':'as_good_as_new','Buen estado':'good',Aceptable:'fair','Para piezas':'has_given_it_all'}[filters.condition];
+  if(condition)params.set('condition',condition);
+  const config=await this.request('https://api.wallapop.com/api/v3/search/components?'+params,requestOptions);
+  const queryParams=config?.components?.find(c=>c.type==='search_results')?.type_data?.query_params;
+  if(!queryParams||typeof queryParams.search_id!=='string')throw new ProviderError('La estructura de búsqueda de Wallapop ha cambiado.','INVALID_RESPONSE');
+  const section=new URLSearchParams(params);
+  for(const [key,value] of Object.entries(queryParams)){
+   if(value!==null&&value!==undefined)section.set(key,String(value));
   }
-  return {items:[...found.values()],pages:pageCount,queries,hasMore,skippedInvalid:invalid.length,fetchedAt:this.now()};
+  section.set('source','deep_link');
+  section.set('section_type','organic_search_results');
+  return section;
  }
- async detail(listing,{signal,center=DEFAULT_CENTER,force=false}={}){
+
+ async *searchPages(plan,filters={}, {signal,onAccessLimit,onProgress=()=>{},pages=Infinity}={}){
+  const center=filters.center||DEFAULT_CENTER;
+  const requestOptions={signal,onAccessLimit,onWait:onProgress};
+  const queries=[plan.product,...(plan.queries||[])].map(q=>q.trim()).filter(Boolean).filter((q,i,a)=>a.findIndex(v=>v.toLowerCase()===q.toLowerCase())===i).slice(0,2);
+  if(!queries.length)throw new ProviderError('Introduce un producto para buscar.');
+  if(pages!==Infinity&&(!Number.isSafeInteger(pages)||pages<1))throw new ProviderError('El número de páginas debe ser un entero positivo.');
+  const passes=[
+   {query:queries[0],order:'most_relevance'},
+   {query:queries[0],order:'price_low_to_high'},
+  ];
+  if(queries[1])passes.push({query:queries[1],order:'most_relevance'});
+  const pending=passes.map(pass=>({...pass,seenCursors:new Set(),pageCount:0}));
+  const seenIds=new Set();
+  let pageCount=0,skippedInvalid=0,paginationStalled=false,limited=false;
+
+  // Alternate relevance and price. Fetch only when the decision engine asks for another page.
+  while(pending.length){
+   signal?.throwIfAborted();
+   const pass=pending.shift();
+   if(!pass.section){
+    onProgress('Consultando Wallapop: '+pass.query+'…');
+    pass.section=await this.searchSection(pass,filters,center,requestOptions);
+   }
+   onProgress('Recogiendo anuncios reales · página '+(pageCount+1)+'…');
+   const result=await this.request('https://api.wallapop.com/api/v3/search/section?'+pass.section,requestOptions);
+   const rawItems=result?.data?.section?.items;
+   if(!Array.isArray(rawItems))throw new ProviderError('Wallapop devolvió una página sin anuncios reconocibles.','INVALID_RESPONSE');
+   pageCount++;
+   pass.pageCount++;
+   const items=[];
+   for(const raw of rawItems){
+    if(seenIds.has(raw?.id))continue;
+    let item;
+    try{item=normalizeListing(raw,{center});}
+    catch{skippedInvalid++;continue;}
+    if(item.available&&!item.reserved){
+     seenIds.add(item.providerId);
+     items.push(item);
+    }
+   }
+   const next=result?.meta?.next_page;
+   if(next!=null&&next!==''){
+    if(typeof next!=='string'||next.length>20_000)throw new ProviderError('Paginación de Wallapop no válida.','INVALID_RESPONSE');
+    if(pass.seenCursors.has(next)){
+     paginationStalled=true;
+    }else if(pass.pageCount>=pages){
+     limited=true;
+    }else{
+     pass.seenCursors.add(next);
+     pass.section.set('next_page',next);
+     pending.push(pass);
+    }
+   }
+   yield {items,pages:pageCount,queries,hasMore:pending.length>0||limited,paginationStalled,skippedInvalid,fetchedAt:this.now()};
+  }
+ }
+
+ // The collecting API retains its small default; the app consumes searchPages on demand.
+ async search(plan,filters={}, {onPage=()=>{},pages=2,...options}={}){
+  const items=[];
+  let metadata;
+  for await(const {items:batch,...page} of this.searchPages(plan,filters,{...options,pages})){
+   metadata=page;
+   for(const item of batch)items.push(item);
+   await onPage(batch,page);
+  }
+  return {items,...metadata};
+ }
+ async detail(listing,{signal,onAccessLimit,onWait,center=DEFAULT_CENTER,force=false}={}){
   if(listing.provider!=='wallapop'||!/^[a-zA-Z0-9_%-]{1,300}$/.test(listing.slug||''))throw new ProviderError('El enlace de la ficha no es válido.');
   const url='https://es.wallapop.com/item/'+listing.slug;
-  if(force)this.cache.delete(url);
-  const html=await this.request(url,{signal,json:false,ttl:15*60_000});
-  const parsed=parsePublicPage(html);
+  if(force)this.cache.delete(publicPageKey(url));
+  // Keep only the listing and seller fields when caching hundreds of public pages.
+  const parsed=await this.request(url,{signal,onAccessLimit,onWait,parsePage:true,ttl:15*60_000});
   if(parsed.item.id!==listing.providerId)throw new ProviderError('La ficha recibida no corresponde al anuncio.','INVALID_RESPONSE');
-  const item=normalizeListing(parsed.item,{center,seller:parsed.seller,detailed:true,now:this.cache.get(url)?.storedAt||this.now()});
+  const item=normalizeListing(parsed.item,{center,seller:parsed.seller,detailed:true,now:this.cache.get(publicPageKey(url))?.storedAt??this.now()});
   if(!item.createdAt)item.createdAt=listing.createdAt;
   return item;
  }
- async enrich(items,{signal,onProgress=()=>{},center=DEFAULT_CENTER}={}){
+ async enrich(items,{signal,onAccessLimit,onWait,onProgress=()=>{},center=DEFAULT_CENTER}={}){
   const result=[],errors=[];
   for(const [i,item]of items.entries()){
    signal?.throwIfAborted();onProgress(`Leyendo fichas públicas ${i+1} de ${items.length}…`);
-   try{result.push(await this.detail(item,{signal,center}));}
-   catch(e){if(signal?.aborted||['ACCESS_DENIED','RATE_LIMIT'].includes(e.code))throw e;if(e.code!=='NOT_FOUND')result.push({...item,detailError:e.message});errors.push({id:item.id,error:e.message});}
+   try{result.push(await this.detail(item,{signal,onAccessLimit,onWait,center}));}
+   catch(e){if(signal?.aborted)throw signal.reason;if(['ACCESS_DENIED','RATE_LIMIT'].includes(e.code))throw e;if(e.code!=='NOT_FOUND')result.push({...item,detailError:e.message});errors.push({id:item.id,error:e.message});}
   }
   return {items:result,errors};
  }

@@ -75,6 +75,7 @@ async function checkAlerts() {
       if(dataset==='demo')continue;
       const result = await service.search(alert.query,constraints({minPrice:alert.minPrice??0,maxPrice:alert.price,condition:alert.condition,radius:alert.radius,zone:alert.zone,center:alert.center}),dataset,{signal:controller.signal});
       count+=await notifyNewMatches(alert,result.items,store,notify);
+      if(result.sourceError)return {count,sourceError:result.sourceError};
     }
     return {count};
   } finally {controller = null; checking = false;}
@@ -159,6 +160,9 @@ else {
             signal: controller.signal, onProgress: message => window?.webContents.send('cerca:progress', message),
             onUpdate: update => window?.webContents.send('cerca:search-update',{...update,searchId:request.searchId}),
           });
+        } catch (error) {
+          if (controller.signal.aborted) throw new Error('Búsqueda cancelada.');
+          throw error;
         } finally {controller = null;}
       });
       handle('cerca:cancel', () => {controller?.abort();return true;});

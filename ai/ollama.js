@@ -51,9 +51,12 @@ export class Ollama {
     catch { throw new InvalidModelOutputError('El modelo devolvió una respuesta inválida. Vuelve a intentarlo.'); }
   }
 
-  async decide(model,data,options={}){const {systemDecision}=await import('./systemone.js');return systemDecision(this,model,data,options);}
+  async decide(model,data,options={}){const {reviewDecision}=await import('./judge.js');return reviewDecision(this,model,data,options);}
 
-  async warmup(model=MODELS.decision){if(model===MODELS.decision){return this.request('/v1/systemone',{model,state:'Preparando Cerca.',questions:{ready:{type:'choice',instructions:'Selecciona listo.',criteria:{listo:'El servicio está listo.',otro:'Cualquier otro caso.'}}},keep_alive:'15m'},{timeout:60000});}return this.request('/api/chat',{model,messages:[],keep_alive:'15m',options:{num_ctx:4096,num_predict:0}},{timeout:60000});}
+  async warmup(model=MODELS.decision){
+    if(model===MODELS.decision)return this.request('/v1/systemone',{model,state:'Preparando Cerca.',questions:{ready:{type:'choice',instructions:'Selecciona listo.',criteria:{listo:'El servicio está listo.',otro:'Cualquier otro caso.'}}},keep_alive:'15m'},{timeout:60000});
+    return this.request('/api/chat',{model,messages:[],keep_alive:'15m',options:{num_ctx:8192,num_predict:0}},{timeout:60000});
+  }
 
   async embed(input, signal) {
     const reply = await this.request('/api/embed', {
